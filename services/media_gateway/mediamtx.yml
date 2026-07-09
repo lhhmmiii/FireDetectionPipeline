@@ -1,0 +1,33 @@
+###############################################
+# MediaMTX configuration for the Media Gateway
+###############################################
+
+# --- General ---
+logLevel: info
+logDestinations: [stdout]
+
+# --- RTSP Server ---
+# Receives RTSP from UAV and relays to Frame Extractor
+rtsp: yes
+rtspAddress: :8554
+protocols: [udp, tcp]
+
+# --- WebRTC Server ---
+# Converts RTSP to WebRTC for browser-based Dashboard
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowOrigin: '*'
+webrtcICEServers2: []
+
+# --- HLS (disabled — not needed) ---
+hls: no
+
+# --- API ---
+api: yes
+apiAddress: :9997
+
+# --- Paths ---
+# Accept any incoming RTSP stream
+paths:
+  all_others:
+    source: publisher
