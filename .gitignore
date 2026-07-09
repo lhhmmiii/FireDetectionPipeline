@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+*.env.local
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models & Checkpoints
+models/fire/weights/
+models/tracking/weights/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+
+# Videos & Data
+videos/*.mp4
+videos/*.avi
+videos/*.mkv
+data/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+.coverage
+htmlcov/
+
+# Node modules
+services/dashboard/frontend/node_modules/
