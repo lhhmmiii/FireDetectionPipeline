@@ -18,6 +18,9 @@ webrtc: yes
 webrtcAddress: :8889
 webrtcAllowOrigin: '*'
 webrtcICEServers2: []
+webrtcAdditionalHosts:
+  - 127.0.0.1
+webrtcICEUDPMuxAddress: :8889
 
 # --- HLS (disabled — not needed) ---
 hls: no
