@@ -4,6 +4,7 @@ from shared.schemas.messages import (
     DetectionMessage,
     DetectionResult,
     FrameMessage,
+    SpanMessage,
     TrackMessage,
 )
 
@@ -12,4 +13,5 @@ __all__ = [
     "DetectionMessage",
     "DetectionResult",
     "TrackMessage",
+    "SpanMessage",
 ]

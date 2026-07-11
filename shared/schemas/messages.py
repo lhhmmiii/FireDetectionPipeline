@@ -86,3 +86,35 @@ class TrackMessage:
     class_id: int = 0
     class_name: str = ""
     source_id: str = "default"
+
+
+@dataclass(frozen=True)
+class SpanMessage:
+    """A single traced operation published to the 'metrics' topic.
+
+    trace_id is the originating frame's frame_id, which threads unchanged
+    through the frames/detections/tracks topics — this lets the monitoring
+    service correlate spans across stages without any schema changes to
+    the other message types.
+
+    Attributes:
+        trace_id: Correlates spans for the same frame across pipeline stages.
+        span_id: Unique identifier for this span (UUID).
+        stage: Pipeline stage that produced the span (e.g. "frame_extractor").
+        operation: Name of the traced operation (e.g. "extract_frame").
+        start_time: ISO-8601 timestamp of when the operation started.
+        duration_ms: Wall-clock duration of the operation in milliseconds.
+        status: One of "ok", "error", or "dropped".
+        source_id: Identifier for the video source / UAV.
+        error: Error message when status is "error" or "dropped".
+    """
+
+    trace_id: str
+    span_id: str
+    stage: str
+    operation: str
+    start_time: str
+    duration_ms: float = 0.0
+    status: str = "ok"
+    source_id: str = "default"
+    error: str = ""
