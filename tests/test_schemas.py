@@ -12,6 +12,7 @@ from shared.schemas.messages import (
     DetectionMessage,
     DetectionResult,
     FrameMessage,
+    SpanMessage,
     TrackMessage,
 )
 
@@ -201,3 +202,85 @@ class TestTrackMessage:
         assert restored.track_id == msg.track_id
         assert restored.bbox == msg.bbox
         assert restored.class_name == "smoke"
+
+
+class TestSpanMessage:
+    """Tests for SpanMessage schema."""
+
+    def test_create_span_message(self):
+        """Span message should be created with all fields."""
+        msg = SpanMessage(
+            trace_id="frame-1",
+            span_id="span-1",
+            stage="detection",
+            operation="detect",
+            start_time="2025-01-01T00:00:00Z",
+            duration_ms=12.5,
+            source_id="uav-1",
+        )
+        assert msg.trace_id == "frame-1"
+        assert msg.stage == "detection"
+        assert msg.duration_ms == 12.5
+        assert msg.status == "ok"
+
+    def test_span_message_defaults(self):
+        """Span message should default to status=ok and no error."""
+        msg = SpanMessage(
+            trace_id="frame-1",
+            span_id="span-1",
+            stage="tracking",
+            operation="track",
+            start_time="2025-01-01T00:00:00Z",
+        )
+        assert msg.duration_ms == 0.0
+        assert msg.status == "ok"
+        assert msg.source_id == "default"
+        assert msg.error == ""
+
+    def test_span_message_dropped_status(self):
+        """Span message should support a dropped status with a reason."""
+        msg = SpanMessage(
+            trace_id="frame-2",
+            span_id="span-2",
+            stage="frame_extractor",
+            operation="extract_frame",
+            start_time="2025-01-01T00:00:00Z",
+            status="dropped",
+            error="rtsp_read_failed",
+        )
+        assert msg.status == "dropped"
+        assert msg.error == "rtsp_read_failed"
+
+    def test_span_message_immutable(self):
+        """Span message should be immutable (frozen)."""
+        msg = SpanMessage(
+            trace_id="frame-1",
+            span_id="span-1",
+            stage="detection",
+            operation="detect",
+            start_time="2025-01-01T00:00:00Z",
+        )
+        with pytest.raises(AttributeError):
+            msg.status = "error"
+
+    def test_span_message_serialization_roundtrip(self):
+        """Span message should survive JSON roundtrip."""
+        msg = SpanMessage(
+            trace_id="frame-1",
+            span_id="span-1",
+            stage="detection",
+            operation="detect",
+            start_time="2025-01-01T00:00:00Z",
+            duration_ms=5.25,
+            status="error",
+            source_id="uav-1",
+            error="boom",
+        )
+        json_str = json.dumps(asdict(msg))
+        parsed = json.loads(json_str)
+        restored = SpanMessage(**parsed)
+
+        assert restored.trace_id == msg.trace_id
+        assert restored.duration_ms == msg.duration_ms
+        assert restored.status == "error"
+        assert restored.error == "boom"
