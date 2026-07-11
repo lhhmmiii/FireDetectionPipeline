@@ -4,6 +4,8 @@ from shared.config.settings import (
     DashboardSettings,
     DetectionSettings,
     KafkaSettings,
+    MetricsSettings,
+    MonitoringSettings,
     RTSPSettings,
     TrackingSettings,
 )
@@ -14,4 +16,6 @@ __all__ = [
     "DetectionSettings",
     "TrackingSettings",
     "DashboardSettings",
+    "MetricsSettings",
+    "MonitoringSettings",
 ]

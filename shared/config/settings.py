@@ -47,6 +47,18 @@ class KafkaSettings:
     topic_tracks: str = field(
         default_factory=lambda: _env("KAFKA_TOPIC_TRACKS", "tracks")
     )
+    topic_metrics: str = field(
+        default_factory=lambda: _env("KAFKA_TOPIC_METRICS", "metrics")
+    )
+
+
+@dataclass(frozen=True)
+class MetricsSettings:
+    """Tracing/metrics emission configuration, used by producing services."""
+
+    enabled: bool = field(
+        default_factory=lambda: _env_bool("METRICS_ENABLED", True)
+    )
 
 
 @dataclass(frozen=True)
@@ -141,4 +153,22 @@ class DashboardSettings:
         default_factory=lambda: _parse_streams(
             _env("DASHBOARD_STREAMS", "uav-1:uav1,uav-2:uav2")
         )
+    )
+
+
+@dataclass(frozen=True)
+class MonitoringSettings:
+    """Monitoring service configuration."""
+
+    host: str = field(
+        default_factory=lambda: _env("MONITORING_HOST", "0.0.0.0")
+    )
+    port: int = field(
+        default_factory=lambda: _env_int("MONITORING_PORT", 8090)
+    )
+    window_seconds: float = field(
+        default_factory=lambda: _env_float("METRICS_WINDOW_SECONDS", 60.0)
+    )
+    baseline_dir: str = field(
+        default_factory=lambda: _env("MONITORING_BASELINE_DIR", "/app/data/baselines")
     )
