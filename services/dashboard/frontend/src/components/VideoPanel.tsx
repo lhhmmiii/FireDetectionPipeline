@@ -34,18 +34,47 @@ export default function VideoPanel({ videoRef, activeTracks, webrtcConnected, la
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (activeTracks.size === 0) return;
 
+    // The displayed video's native resolution (used for letterbox calculation).
     const videoW = video?.videoWidth || canvas.width;
     const videoH = video?.videoHeight || canvas.height;
-    const scaleX = canvas.width / videoW;
-    const scaleY = canvas.height / videoH;
+
+    // Account for object-fit: contain letterboxing.
+    // The video maintains its aspect ratio inside the container,
+    // so there may be black bars on the sides or top/bottom.
+    const containerAspect = canvas.width / canvas.height;
+    const videoAspect = videoW / videoH;
+
+    let renderW: number, renderH: number, offsetX: number, offsetY: number;
+    if (videoAspect > containerAspect) {
+      // Video is wider than container — black bars on top/bottom
+      renderW = canvas.width;
+      renderH = canvas.width / videoAspect;
+      offsetX = 0;
+      offsetY = (canvas.height - renderH) / 2;
+    } else {
+      // Video is taller than container — black bars on left/right
+      renderH = canvas.height;
+      renderW = canvas.height * videoAspect;
+      offsetX = (canvas.width - renderW) / 2;
+      offsetY = 0;
+    }
 
     for (const track of activeTracks.values()) {
-      const { bbox, class_name, track_id, confidence } = track;
+      const { bbox, class_name, track_id, confidence, frame_width, frame_height } = track;
       if (!bbox || bbox.length < 4) continue;
 
+      // Bbox coordinates are in detection-frame space (e.g. 640×480).
+      // Use frame_width/frame_height from the track if available,
+      // otherwise fall back to the video's native resolution.
+      const srcW = (frame_width && frame_width > 0) ? frame_width : videoW;
+      const srcH = (frame_height && frame_height > 0) ? frame_height : videoH;
+
+      const scaleX = renderW / srcW;
+      const scaleY = renderH / srcH;
+
       const color = BOX_COLORS[class_name] ?? DEFAULT_COLOR;
-      const x1 = bbox[0] * scaleX;
-      const y1 = bbox[1] * scaleY;
+      const x1 = bbox[0] * scaleX + offsetX;
+      const y1 = bbox[1] * scaleY + offsetY;
       const w = (bbox[2] - bbox[0]) * scaleX;
       const h = (bbox[3] - bbox[1]) * scaleY;
 

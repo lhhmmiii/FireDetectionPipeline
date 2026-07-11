@@ -116,6 +116,8 @@ class SimpleIoUTracker(BaseTracker):
         frame_id = detection.frame_id if isinstance(detection, DetectionMessage) else detection.get("frame_id", "")
         timestamp = detection.timestamp if isinstance(detection, DetectionMessage) else detection.get("timestamp", "")
         source_id = detection.source_id if isinstance(detection, DetectionMessage) else detection.get("source_id", "default")
+        frame_width = detection.frame_width if isinstance(detection, DetectionMessage) else detection.get("frame_width", 0)
+        frame_height = detection.frame_height if isinstance(detection, DetectionMessage) else detection.get("frame_height", 0)
 
         # Operate only on this source's track bucket.
         tracks = self._tracks_by_source.setdefault(source_id, [])
@@ -191,6 +193,8 @@ class SimpleIoUTracker(BaseTracker):
                         class_id=track.class_id,
                         class_name=CLASS_NAMES.get(track.class_id, "unknown"),
                         source_id=source_id,
+                        frame_width=frame_width,
+                        frame_height=frame_height,
                     )
                 )
 

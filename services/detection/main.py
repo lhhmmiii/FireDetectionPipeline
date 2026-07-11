@@ -126,6 +126,8 @@ class DetectionService:
                 scores=result.scores,
                 classes=result.classes,
                 source_id=source_id,
+                frame_width=message.get("width", 0),
+                frame_height=message.get("height", 0),
             )
 
             self._producer.produce(detection_msg, key=frame_id)

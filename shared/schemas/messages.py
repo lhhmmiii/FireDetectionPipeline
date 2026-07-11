@@ -61,6 +61,8 @@ class DetectionMessage:
     scores: list[float] = field(default_factory=list)
     classes: list[int] = field(default_factory=list)
     source_id: str = "default"
+    frame_width: int = 0
+    frame_height: int = 0
 
 
 @dataclass(frozen=True)
@@ -86,6 +88,8 @@ class TrackMessage:
     class_id: int = 0
     class_name: str = ""
     source_id: str = "default"
+    frame_width: int = 0
+    frame_height: int = 0
 
 
 @dataclass(frozen=True)

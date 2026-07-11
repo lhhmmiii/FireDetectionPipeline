@@ -7,6 +7,8 @@ export interface TrackMessage {
   class_id: number;
   class_name: string;
   source_id: string;
+  frame_width: number;
+  frame_height: number;
 }
 
 export type AlertType = 'fire' | 'smoke' | 'info';
