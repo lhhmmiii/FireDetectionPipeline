@@ -34,7 +34,7 @@ docker compose logs -f detection
 
 ## Architecture
 
-Five microservices communicate exclusively through Kafka. Services never call each other directly.
+Six microservices communicate exclusively through Kafka. Services never call each other directly.
 
 ```
 UAV → RTSP → MediaMTX (media_gateway)
@@ -42,6 +42,8 @@ UAV → RTSP → MediaMTX (media_gateway)
                  └─→ WebRTC → dashboard UI
                                   ↑
 Kafka[frames] → detection → Kafka[detections] → tracking → Kafka[tracks] → dashboard
+
+frame_extractor, detection, tracking, dashboard → Kafka[metrics] → monitoring UI
 ```
 
 **Kafka topics and ownership:**
@@ -51,12 +53,24 @@ Kafka[frames] → detection → Kafka[detections] → tracking → Kafka[tracks]
 | `frames` | frame_extractor | detection |
 | `detections` | detection | tracking |
 | `tracks` | tracking | dashboard |
+| `metrics` | frame_extractor, detection, tracking, dashboard | monitoring |
+
+`monitoring` (`services/monitoring/`) consumes `metrics` and serves a dashboard
+(latency, Kafka transit time, end-to-end latency, FPS, dropped frames, and
+before/after baseline comparison) at port 8090. It never touches `frames`,
+`detections`, or `tracks`.
 
 **Shared module** (`shared/`) is mounted read-only into every Python service container (`/app/shared`). Services add `/app` to `sys.path` to import from it. It contains:
-- `shared/schemas/messages.py` — frozen dataclass Kafka message schemas (`FrameMessage`, `DetectionMessage`, `TrackMessage`)
+- `shared/schemas/messages.py` — frozen dataclass Kafka message schemas (`FrameMessage`, `DetectionMessage`, `TrackMessage`, `SpanMessage`)
 - `shared/kafka/` — `KafkaJsonProducer`, `KafkaFrameProducer`, `KafkaJsonConsumer`
 - `shared/config/settings.py` — frozen dataclass settings loaded from env vars
 - `shared/utils/` — `encode_image`/`decode_image` (base64 JPEG), `setup_logging`
+- `shared/tracing/` — `Tracer`: a lightweight tracing SDK. Each producing service wraps its
+  per-message work in `tracer.span(operation, trace_id, source_id)` (a context manager) or
+  calls `tracer.record_dropped(...)`, which emits a `SpanMessage` to the `metrics` topic.
+  `trace_id` is always the originating frame's `frame_id`, since it already threads unchanged
+  through `frames`/`detections`/`tracks` — this lets `monitoring` correlate spans across
+  stages without any changes to the other message schemas.
 
 ## Key Design Patterns
 
@@ -66,12 +80,13 @@ Kafka[frames] → detection → Kafka[detections] → tracking → Kafka[tracks]
 
 **Configuration** — All settings come from environment variables via `shared/config/settings.py`. Reference `.env.example` for available variables. Never hardcode broker addresses, topic names, model paths, or thresholds.
 
-**Error resilience** — Services must skip corrupted frames and retry transient Kafka/RTSP failures. A single bad frame must never crash the service loop.
+**Error resilience** — Services must skip corrupted frames and retry transient Kafka/RTSP failures. A single bad frame must never crash the service loop. This extends to tracing: a failure to publish a `SpanMessage` must never crash or block the host service's main loop — `Tracer` catches and logs instead of raising.
 
 ## Constraints
 
 - AI services (`detection`, `tracking`) must never depend on WebRTC.
 - `dashboard` must never run inference or decode RTSP.
+- `monitoring` must never run inference, decode RTSP, or consume `frames`/`detections`/`tracks` — it only consumes `metrics`.
 - Services must never share Kafka producers or communicate outside Kafka.
 - Kafka message schemas in `shared/schemas/messages.py` are a contract — breaking changes require updating all producers and consumers together.
 - `media_gateway` uses MediaMTX (pre-built binary in Docker), not custom Python code.
