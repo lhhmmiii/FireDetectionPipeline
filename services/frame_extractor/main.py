@@ -24,9 +24,10 @@ import cv2
 # Add project root to path for shared imports
 sys.path.insert(0, "/app")
 
-from shared.config import KafkaSettings, RTSPSettings
-from shared.kafka import KafkaFrameProducer
+from shared.config import KafkaSettings, MetricsSettings, RTSPSettings
+from shared.kafka import KafkaFrameProducer, KafkaJsonProducer
 from shared.schemas import FrameMessage
+from shared.tracing import Tracer
 from shared.utils import encode_image, setup_logging
 
 logger = setup_logging("frame_extractor")
@@ -38,9 +39,12 @@ class FrameExtractorService:
     def __init__(self) -> None:
         self._rtsp_settings = RTSPSettings()
         self._kafka_settings = KafkaSettings()
+        self._metrics_settings = MetricsSettings()
         self._running = False
         self._capture: cv2.VideoCapture | None = None
         self._producer: KafkaFrameProducer | None = None
+        self._metrics_producer: KafkaJsonProducer | None = None
+        self._tracer: Tracer | None = None
 
     def _connect_rtsp(self) -> cv2.VideoCapture:
         """Connect to the RTSP stream with retry logic."""
@@ -79,31 +83,47 @@ class FrameExtractorService:
             topic=self._kafka_settings.topic_frames,
         )
 
+    def _init_tracer(self) -> Tracer:
+        """Initialize the metrics producer and tracer for this stage."""
+        if not self._metrics_settings.enabled:
+            return Tracer(stage="frame_extractor", producer=None, enabled=False)
+
+        self._metrics_producer = KafkaJsonProducer(
+            bootstrap_servers=self._kafka_settings.bootstrap_servers,
+            topic=self._kafka_settings.topic_metrics,
+        )
+        return Tracer(stage="frame_extractor", producer=self._metrics_producer)
+
     def _process_frame(self, frame: any) -> None:
         """Encode and publish a single frame to Kafka."""
-        # Resize if configured
-        width = self._rtsp_settings.resize_width
-        height = self._rtsp_settings.resize_height
-        if width > 0 and height > 0:
-            frame = cv2.resize(frame, (width, height))
+        frame_id = str(uuid.uuid4())
+        uav_id = self._rtsp_settings.uav_id
 
-        h, w = frame.shape[:2]
+        with self._tracer.span("extract_frame", trace_id=frame_id, source_id=uav_id):
+            # Resize if configured
+            width = self._rtsp_settings.resize_width
+            height = self._rtsp_settings.resize_height
+            if width > 0 and height > 0:
+                frame = cv2.resize(frame, (width, height))
 
-        message = FrameMessage(
-            frame_id=str(uuid.uuid4()),
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            image_data=encode_image(frame),
-            width=w,
-            height=h,
-            source_id=self._rtsp_settings.uav_id,
-        )
+            h, w = frame.shape[:2]
 
-        self._producer.produce(message, key=message.frame_id)
+            message = FrameMessage(
+                frame_id=frame_id,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                image_data=encode_image(frame),
+                width=w,
+                height=h,
+                source_id=uav_id,
+            )
+
+            self._producer.produce(message, key=message.frame_id)
 
     def run(self) -> None:
         """Main service loop: connect RTSP → extract frames → publish to Kafka."""
         self._running = True
         self._producer = self._init_producer()
+        self._tracer = self._init_tracer()
 
         uav_id = self._rtsp_settings.uav_id
         target_fps = self._rtsp_settings.extract_fps
@@ -128,6 +148,9 @@ class FrameExtractorService:
                     ret, frame = self._capture.read()
                     if not ret:
                         logger.warning("Failed to read frame, reconnecting...")
+                        self._tracer.record_dropped(
+                            "extract_frame", source_id=uav_id, reason="rtsp_read_failed"
+                        )
                         break
 
                     # Frame rate limiting
@@ -174,6 +197,8 @@ class FrameExtractorService:
             self._capture.release()
         if self._producer:
             self._producer.close()
+        if self._metrics_producer:
+            self._metrics_producer.close()
         logger.info("Frame Extractor shut down complete")
 
 

@@ -18,9 +18,10 @@ from datetime import datetime, timezone
 # Add project root to path for shared imports
 sys.path.insert(0, "/app")
 
-from shared.config import DetectionSettings, KafkaSettings
+from shared.config import DetectionSettings, KafkaSettings, MetricsSettings
 from shared.kafka import KafkaJsonConsumer, KafkaJsonProducer
 from shared.schemas import DetectionMessage
+from shared.tracing import Tracer
 from shared.utils import decode_image, setup_logging
 
 from detector import BaseDetector
@@ -45,8 +46,11 @@ class DetectionService:
     def __init__(self, detector: BaseDetector | None = None) -> None:
         self._kafka_settings = KafkaSettings()
         self._detection_settings = DetectionSettings()
+        self._metrics_settings = MetricsSettings()
         self._consumer: KafkaJsonConsumer | None = None
         self._producer: KafkaJsonProducer | None = None
+        self._metrics_producer: KafkaJsonProducer | None = None
+        self._tracer: Tracer | None = None
 
         self._detector = detector if detector is not None else _build_detector(
             self._detection_settings.model_path
@@ -77,6 +81,15 @@ class DetectionService:
             topic=self._kafka_settings.topic_detections,
         )
 
+        if self._metrics_settings.enabled:
+            self._metrics_producer = KafkaJsonProducer(
+                bootstrap_servers=self._kafka_settings.bootstrap_servers,
+                topic=self._kafka_settings.topic_metrics,
+            )
+            self._tracer = Tracer(stage="detection", producer=self._metrics_producer)
+        else:
+            self._tracer = Tracer(stage="detection", producer=None, enabled=False)
+
     def _process_frame(self, message: dict) -> None:
         """Process a single frame message.
 
@@ -84,36 +97,41 @@ class DetectionService:
             message: Deserialized FrameMessage dict from Kafka.
         """
         frame_id = message.get("frame_id", "unknown")
+        source_id = message.get("source_id", "default")
 
         try:
             # Decode the image from base64
             image = decode_image(message["image_data"])
         except (KeyError, ValueError):
             logger.warning("Corrupted frame %s, skipping", frame_id)
+            self._tracer.record_dropped(
+                "decode", trace_id=frame_id, source_id=source_id, reason="corrupted_frame"
+            )
             return
 
-        # Run detection
-        result = self._detector.predict(
-            image,
-            confidence_threshold=self._detection_settings.confidence_threshold,
-        )
+        with self._tracer.span("detect", trace_id=frame_id, source_id=source_id):
+            # Run detection
+            result = self._detector.predict(
+                image,
+                confidence_threshold=self._detection_settings.confidence_threshold,
+            )
 
-        # Publish detection results
-        detection_msg = DetectionMessage(
-            frame_id=frame_id,
-            timestamp=message.get(
-                "timestamp", datetime.now(timezone.utc).isoformat()
-            ),
-            boxes=result.boxes,
-            scores=result.scores,
-            classes=result.classes,
-            source_id=message.get("source_id", "default"),
-        )
+            # Publish detection results
+            detection_msg = DetectionMessage(
+                frame_id=frame_id,
+                timestamp=message.get(
+                    "timestamp", datetime.now(timezone.utc).isoformat()
+                ),
+                boxes=result.boxes,
+                scores=result.scores,
+                classes=result.classes,
+                source_id=source_id,
+            )
 
-        self._producer.produce(detection_msg, key=frame_id)
-        logger.debug(
-            "Frame %s: %d detections", frame_id, len(result.boxes)
-        )
+            self._producer.produce(detection_msg, key=frame_id)
+            logger.debug(
+                "Frame %s: %d detections", frame_id, len(result.boxes)
+            )
 
     def run(self) -> None:
         """Start the detection service."""
@@ -130,6 +148,8 @@ class DetectionService:
             self._consumer.close()
         if self._producer:
             self._producer.close()
+        if self._metrics_producer:
+            self._metrics_producer.close()
         logger.info("Detection Service shut down complete")
 
 

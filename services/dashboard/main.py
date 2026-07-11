@@ -36,8 +36,9 @@ from fastapi.staticfiles import StaticFiles
 # Add project root to path for shared imports
 sys.path.insert(0, "/app")
 
-from shared.config import DashboardSettings, KafkaSettings
-from shared.kafka import KafkaJsonConsumer
+from shared.config import DashboardSettings, KafkaSettings, MetricsSettings
+from shared.kafka import KafkaJsonConsumer, KafkaJsonProducer
+from shared.tracing import Tracer
 from shared.utils import setup_logging
 
 logger = setup_logging("dashboard")
@@ -91,10 +92,12 @@ class KafkaTrackConsumer:
         kafka_settings: KafkaSettings,
         queue: asyncio.Queue,
         loop: asyncio.AbstractEventLoop,
+        tracer: Tracer,
     ) -> None:
         self._kafka_settings = kafka_settings
         self._queue = queue
         self._loop = loop
+        self._tracer = tracer
         self._consumer: KafkaJsonConsumer | None = None
         self._thread: threading.Thread | None = None
         self._running = False
@@ -121,9 +124,14 @@ class KafkaTrackConsumer:
 
             def on_message(message: dict) -> None:
                 if self._running:
-                    asyncio.run_coroutine_threadsafe(
-                        self._queue.put(message), self._loop
-                    )
+                    with self._tracer.span(
+                        "dashboard_receive",
+                        trace_id=message.get("frame_id", "unknown"),
+                        source_id=message.get("source_id", "default"),
+                    ):
+                        asyncio.run_coroutine_threadsafe(
+                            self._queue.put(message), self._loop
+                        )
 
             self._consumer.consume(callback=on_message)
         except Exception:
@@ -145,6 +153,7 @@ manager = ConnectionManager()
 track_queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
 kafka_consumer: KafkaTrackConsumer | None = None
 broadcast_task: asyncio.Task | None = None
+metrics_producer: KafkaJsonProducer | None = None
 
 
 async def broadcast_tracks() -> None:
@@ -162,12 +171,22 @@ async def broadcast_tracks() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: start/stop Kafka consumer and broadcast task."""
-    global kafka_consumer, broadcast_task
+    global kafka_consumer, broadcast_task, metrics_producer
 
     loop = asyncio.get_event_loop()
     kafka_settings = KafkaSettings()
+    metrics_settings = MetricsSettings()
 
-    kafka_consumer = KafkaTrackConsumer(kafka_settings, track_queue, loop)
+    if metrics_settings.enabled:
+        metrics_producer = KafkaJsonProducer(
+            bootstrap_servers=kafka_settings.bootstrap_servers,
+            topic=kafka_settings.topic_metrics,
+        )
+        tracer = Tracer(stage="dashboard", producer=metrics_producer)
+    else:
+        tracer = Tracer(stage="dashboard", producer=None, enabled=False)
+
+    kafka_consumer = KafkaTrackConsumer(kafka_settings, track_queue, loop, tracer)
     kafka_consumer.start()
 
     broadcast_task = asyncio.create_task(broadcast_tracks())
@@ -184,6 +203,8 @@ async def lifespan(app: FastAPI):
             pass
     if kafka_consumer:
         kafka_consumer.stop()
+    if metrics_producer:
+        metrics_producer.close()
     logger.info("Dashboard service stopped")
 
 

@@ -18,8 +18,9 @@ import sys
 # Add project root to path for shared imports
 sys.path.insert(0, "/app")
 
-from shared.config import KafkaSettings, TrackingSettings
+from shared.config import KafkaSettings, MetricsSettings, TrackingSettings
 from shared.kafka import KafkaJsonConsumer, KafkaJsonProducer
+from shared.tracing import Tracer
 from shared.utils import setup_logging
 
 from tracker import BaseTracker, SimpleIoUTracker
@@ -33,8 +34,11 @@ class TrackingService:
     def __init__(self, tracker: BaseTracker | None = None) -> None:
         self._kafka_settings = KafkaSettings()
         self._tracking_settings = TrackingSettings()
+        self._metrics_settings = MetricsSettings()
         self._consumer: KafkaJsonConsumer | None = None
         self._producer: KafkaJsonProducer | None = None
+        self._metrics_producer: KafkaJsonProducer | None = None
+        self._tracer: Tracer | None = None
 
         # Use provided tracker or default
         if tracker is not None:
@@ -58,6 +62,15 @@ class TrackingService:
             topic=self._kafka_settings.topic_tracks,
         )
 
+        if self._metrics_settings.enabled:
+            self._metrics_producer = KafkaJsonProducer(
+                bootstrap_servers=self._kafka_settings.bootstrap_servers,
+                topic=self._kafka_settings.topic_metrics,
+            )
+            self._tracer = Tracer(stage="tracking", producer=self._metrics_producer)
+        else:
+            self._tracer = Tracer(stage="tracking", producer=None, enabled=False)
+
     def _process_detection(self, message: dict) -> None:
         """Process a detection message and publish tracks.
 
@@ -65,20 +78,24 @@ class TrackingService:
             message: Deserialized DetectionMessage dict from Kafka.
         """
         frame_id = message.get("frame_id", "unknown")
+        source_id = message.get("source_id", "default")
 
         try:
-            track_messages = self._tracker.update(message)
+            with self._tracer.span("track", trace_id=frame_id, source_id=source_id):
+                track_messages = self._tracker.update(message)
 
-            for track_msg in track_messages:
-                self._producer.produce(track_msg, key=str(track_msg.track_id))
+                for track_msg in track_messages:
+                    self._producer.produce(track_msg, key=str(track_msg.track_id))
 
-            if track_messages:
-                logger.debug(
-                    "Frame %s: %d active tracks",
-                    frame_id,
-                    len(track_messages),
-                )
+                if track_messages:
+                    logger.debug(
+                        "Frame %s: %d active tracks",
+                        frame_id,
+                        len(track_messages),
+                    )
         except Exception:
+            # The span above already emitted a status="error" record with the
+            # exception message; just log and move on to the next message.
             logger.exception(
                 "Error processing detections for frame %s, skipping",
                 frame_id,
@@ -103,6 +120,8 @@ class TrackingService:
             self._consumer.close()
         if self._producer:
             self._producer.close()
+        if self._metrics_producer:
+            self._metrics_producer.close()
         logger.info("Tracking Service shut down complete")
 
 
