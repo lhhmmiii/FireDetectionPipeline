@@ -56,3 +56,4 @@ htmlcov/
 
 # Node modules
 services/dashboard/frontend/node_modules/
+services/monitoring/frontend/node_modules/
