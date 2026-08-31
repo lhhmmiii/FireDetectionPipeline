@@ -1,4 +1,4 @@
-# 🚁 UAV Real-Time Fire & Smoke Detection Pipeline
+# 🔥 Real-Time Fire & Smoke Detection Pipeline
 
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://www.python.org/)
 [![Kafka](https://img.shields.io/badge/Apache%20Kafka-KRaft%20mode-black.svg)](https://kafka.apache.org/)
@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-18%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Compose%20v2-2496ED.svg)](https://www.docker.com/)
 
-A high-performance, distributed, real-time fire and smoke detection and tracking pipeline designed for multi-UAV (drone) video streams. Built on an event-driven microservices architecture using **Apache Kafka**, **NVIDIA TensorRT** hardware acceleration, **MediaMTX** for low-latency WebRTC video streaming, and modern **FastAPI + React** interactive dashboards with end-to-end latency telemetry monitoring.
+A high-performance, distributed, real-time fire and smoke detection and tracking pipeline designed for multi-camera video streams. Built on an event-driven microservices architecture using **Apache Kafka**, **NVIDIA TensorRT** hardware acceleration, **MediaMTX** for low-latency WebRTC video streaming, and modern **FastAPI + React** interactive dashboards with end-to-end latency telemetry monitoring.
 
 ---
 
@@ -36,10 +36,10 @@ A high-performance, distributed, real-time fire and smoke detection and tracking
 The pipeline decouples media streaming from AI processing using an event-driven architecture where microservices communicate strictly via Apache Kafka.
 
 ```
-                              ┌───────────────┐
-                              │   UAV Fleet   │
-                              │ (RTSP Streams)│
-                              └───────┬───────┘
+                        ┌───────────────────────────┐
+                        │    Live Video Sources     │
+                        │ (RTSP Feeds / IP Cameras) │
+                        └─────────────┬─────────────┘
                                       │ RTSP
                                       ▼
                         ┌───────────────────────────┐
@@ -82,8 +82,8 @@ The pipeline decouples media streaming from AI processing using an event-driven 
 
 - **Decoupled Media & AI Pipelines**: RTSP streams are ingested into MediaMTX and forwarded to frame extractors for decoding, while simultaneously transcoded into ultra-low-latency WebRTC streams for browser rendering.
 - **NVIDIA TensorRT Acceleration**: Sub-millisecond fire and smoke inference powered by an INT8/FP16 optimized RF-DETR architecture.
-- **Multi-Object Tracking (MOT)**: Temporal consistency across frames with per-UAV tracking state, assigning persistent IDs to localized fire and smoke regions.
-- **Multi-UAV / Multi-Stream Support**: Independent frame ingestion and tracking partitioned across multiple UAV sources (`uav-1`, `uav-2`, etc.).
+- **Multi-Object Tracking (MOT)**: Temporal consistency across frames with per-stream tracking state, assigning persistent IDs to localized fire and smoke regions.
+- **Multi-Stream Support**: Independent frame ingestion and tracking partitioned across multiple camera/video sources (`camera-1`, `camera-2`, etc.).
 - **Live Interactive Dashboard**: Real-time video canvas with synchronized bounding box overlays, confidence indicators, active tracks inventory, and alert logs.
 - **End-to-End Distributed Tracing & Telemetry**: Every frame is tagged with a trace ID that tracks processing times across all pipeline stages, Kafka transit delays, dropped frames, and system throughput in a dedicated monitoring UI.
 - **Baseline Performance Comparison**: Capture and compare runtime latency/throughput snapshots before and after code or model changes.
@@ -95,10 +95,10 @@ The pipeline decouples media streaming from AI processing using an event-driven 
 
 | Microservice | Path | Description |
 | :--- | :--- | :--- |
-| **Media Gateway** | `services/media_gateway/` | Pre-configured [MediaMTX](https://github.com/bluenviron/mediamtx) server. Relays incoming RTSP feeds from UAVs and provides WebRTC (WHEP) endpoints. |
+| **Media Gateway** | `services/media_gateway/` | Pre-configured [MediaMTX](https://github.com/bluenviron/mediamtx) server. Relays incoming RTSP video feeds and provides WebRTC (WHEP) endpoints. |
 | **Frame Extractor** | `services/frame_extractor/` | Pulls RTSP video feeds, samples frames at a configurable FPS/resolution, encodes them to base64 JPEG, and publishes `FrameMessage` records to Kafka. |
 | **Detection Service** | `services/detection/` | Consumes raw frames, performs TensorRT-accelerated RF-DETR object detection (`fire` / `smoke`), and publishes `DetectionMessage` records. |
-| **Tracking Service** | `services/tracking/` | Consumes detection boxes, performs IoU-based multi-object association per UAV source, filters false positives, and publishes `TrackMessage` records. |
+| **Tracking Service** | `services/tracking/` | Consumes detection boxes, performs IoU-based multi-object association per video source, filters false positives, and publishes `TrackMessage` records. |
 | **Dashboard Service** | `services/dashboard/` | FastAPI backend + React frontend. Consumes `tracks` from Kafka and broadcasts them via WebSocket to render real-time bounding boxes over WebRTC video feeds. |
 | **Monitoring Service** | `services/monitoring/` | Consumes `SpanMessage` telemetry from the `metrics` topic, aggregates stage latencies, Kafka transit times, and FPS, and serves an observability dashboard. |
 | **Shared Library** | `shared/` | Common Python package containing immutable schemas, Kafka producers/consumers, configuration loaders, logging helpers, and the `Tracer` SDK. |
@@ -132,7 +132,7 @@ All Kafka messages use immutable, frozen dataclasses serialized to JSON.
 
 | Service | Port | Protocol | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Dashboard UI** | `8080` | HTTP / WebSocket | Live UAV video stream + detection overlay (`/ws/tracks`) |
+| **Dashboard UI** | `8080` | HTTP / WebSocket | Live video stream + detection overlay (`/ws/tracks`) |
 | **Monitoring Dashboard** | `8090` | HTTP / WebSocket | Pipeline telemetry, stage latencies, and baseline benchmarking |
 | **Kafka UI** | `8081` | HTTP | Kafka cluster, topic, and consumer group inspector |
 | **MediaMTX RTSP** | `8554` | RTSP (TCP/UDP) | RTSP video stream ingest & relay (`rtsp://localhost:8554/<stream>`) |
@@ -185,17 +185,17 @@ docker compose logs -f
 Stream local video files or a webcam to the Media Gateway using FFmpeg:
 
 ```bash
-# Stream UAV-1 video feed
-ffmpeg -re -stream_loop -1 -i path/to/fire_video_1.mp4 -c copy -f rtsp rtsp://localhost:8554/uav1
+# Stream video feed 1
+ffmpeg -re -stream_loop -1 -i path/to/fire_video_1.mp4 -c copy -f rtsp rtsp://localhost:8554/stream1
 
-# Stream UAV-2 video feed (in a separate terminal)
-ffmpeg -re -stream_loop -1 -i path/to/fire_video_2.mp4 -c copy -f rtsp rtsp://localhost:8554/uav2
+# Stream video feed 2 (in a separate terminal)
+ffmpeg -re -stream_loop -1 -i path/to/fire_video_2.mp4 -c copy -f rtsp rtsp://localhost:8554/stream2
 
 # Stream from local webcam (Linux)
-ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -preset ultrafast -f rtsp rtsp://localhost:8554/uav1
+ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -preset ultrafast -f rtsp rtsp://localhost:8554/stream1
 
 # Stream from local webcam (macOS)
-ffmpeg -f avfoundation -framerate 30 -i "0" -c:v libx264 -preset ultrafast -f rtsp rtsp://localhost:8554/uav1
+ffmpeg -f avfoundation -framerate 30 -i "0" -c:v libx264 -preset ultrafast -f rtsp rtsp://localhost:8554/stream1
 ```
 
 ### 4. Access Dashboards
@@ -225,7 +225,7 @@ All pipeline settings are loaded dynamically via environment variables configure
 | `TRACKING_MAX_AGE` | `30` | Number of missed frames before deleting a track |
 | `TRACKING_MIN_HITS` | `3` | Minimum consecutive detections before activating track |
 | `TRACKING_IOU_THRESHOLD` | `0.3` | IoU threshold for matching detections to existing tracks |
-| `DASHBOARD_STREAMS` | `uav-1:uav1,uav-2:uav2` | UAV ID to MediaMTX stream path mapping |
+| `DASHBOARD_STREAMS` | `camera-1:stream1,camera-2:stream2` | Source ID to MediaMTX stream path mapping pairs |
 | `METRICS_WINDOW_SECONDS` | `60` | Rolling window size for monitoring aggregation |
 
 ---
