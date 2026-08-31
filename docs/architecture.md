@@ -2,12 +2,12 @@
 
 ## Overview
 
-The UAV Fire Detection Pipeline is a microservice-based system that processes live UAV video streams to detect and track fires in real-time.
+The Fire Detection Pipeline is a microservice-based system that processes live video streams to detect and track fires in real-time.
 
 ## System Architecture
 
 ```
-                     UAV
+              Live Video Source
                       │
                   RTSP Stream
                       │
@@ -46,7 +46,7 @@ The UAV Fire Detection Pipeline is a microservice-based system that processes li
 
 | Service | Input | Output | Description |
 |---------|-------|--------|-------------|
-| **Media Gateway** | RTSP from UAV | RTSP + WebRTC | Relays video, converts to WebRTC |
+| **Media Gateway** | RTSP from Video Source | RTSP + WebRTC | Relays video, converts to WebRTC |
 | **Frame Extractor** | RTSP from Gateway | Kafka `frames` | Decodes video, publishes frames |
 | **Detection Service** | Kafka `frames` | Kafka `detections` | Runs fire detection model |
 | **Tracking Service** | Kafka `detections` | Kafka `tracks` | Associates objects across frames |

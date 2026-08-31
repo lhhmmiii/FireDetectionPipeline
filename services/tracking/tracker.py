@@ -102,7 +102,7 @@ class SimpleIoUTracker(BaseTracker):
         """Update tracks with new detections using greedy IoU matching.
 
         Matching and aging are scoped to the detection's source_id, so each
-        UAV is tracked independently even though all sources share one tracker.
+        source is tracked independently even though all sources share one tracker.
 
         Args:
             detection: DetectionMessage from the 'detections' topic.

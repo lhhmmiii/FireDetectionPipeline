@@ -37,7 +37,7 @@ docker compose logs -f detection
 Six microservices communicate exclusively through Kafka. Services never call each other directly.
 
 ```
-UAV → RTSP → MediaMTX (media_gateway)
+Video Stream → RTSP → MediaMTX (media_gateway)
                  ├─→ RTSP → frame_extractor → Kafka[frames]
                  └─→ WebRTC → dashboard UI
                                   ↑

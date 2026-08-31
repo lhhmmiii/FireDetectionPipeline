@@ -219,7 +219,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="UAV Fire Detection Pipeline Monitoring",
+    title="Fire Detection Pipeline Monitoring",
     version="1.0.0",
     lifespan=lifespan,
 )

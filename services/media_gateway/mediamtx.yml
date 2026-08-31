@@ -7,7 +7,7 @@ logLevel: info
 logDestinations: [stdout]
 
 # --- RTSP Server ---
-# Receives RTSP from UAV and relays to Frame Extractor
+# Receives RTSP and relays to Frame Extractor
 rtsp: yes
 rtspAddress: :8554
 protocols: [udp, tcp]

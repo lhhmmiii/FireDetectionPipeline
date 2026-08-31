@@ -1,1 +1,1 @@
-"""Tests package for the UAV Fire Detection Pipeline."""
+"""Tests package for the Fire Detection Pipeline."""

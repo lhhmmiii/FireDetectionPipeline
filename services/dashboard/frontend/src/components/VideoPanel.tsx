@@ -134,7 +134,7 @@ export default function VideoPanel({ videoRef, activeTracks, webrtcConnected, la
               <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
             </svg>
             <p>Waiting for video stream...</p>
-            <span className="placeholder-hint">Connect a UAV RTSP stream to MediaMTX</span>
+            <span className="placeholder-hint">Connect an RTSP stream to MediaMTX</span>
           </div>
         )}
       </div>

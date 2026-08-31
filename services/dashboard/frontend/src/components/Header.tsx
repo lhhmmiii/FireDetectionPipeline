@@ -14,7 +14,7 @@ export default function Header({ webrtcConnected, wsConnected, pipelineOk }: Pro
           </svg>
           <h1>Fire Detection</h1>
         </div>
-        <span className="header-subtitle">UAV Surveillance System</span>
+        <span className="header-subtitle">Real-Time Surveillance System</span>
       </div>
       <nav className="header-right">
         <div className="status-indicators">

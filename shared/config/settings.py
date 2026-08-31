@@ -65,8 +65,8 @@ class MetricsSettings:
 class RTSPSettings:
     """RTSP stream configuration."""
 
-    uav_id: str = field(
-        default_factory=lambda: _env("UAV_ID", "uav-default")
+    source_id: str = field(
+        default_factory=lambda: _env("SOURCE_ID", _env("UAV_ID", "default"))
     )
     url: str = field(
         default_factory=lambda: _env("RTSP_URL", "rtsp://localhost:8554/stream")
@@ -89,6 +89,11 @@ class RTSPSettings:
     skip_on_overload: bool = field(
         default_factory=lambda: _env_bool("FRAME_SKIP_ON_OVERLOAD", True)
     )
+
+    @property
+    def uav_id(self) -> str:
+        """Compatibility alias for source_id."""
+        return self.source_id
 
 
 @dataclass(frozen=True)
@@ -151,7 +156,7 @@ class DashboardSettings:
     )
     streams: tuple[dict[str, str], ...] = field(
         default_factory=lambda: _parse_streams(
-            _env("DASHBOARD_STREAMS", "uav-1:uav1,uav-2:uav2")
+            _env("DASHBOARD_STREAMS", "camera-1:stream1,camera-2:stream2")
         )
     )
 

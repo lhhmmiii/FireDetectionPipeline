@@ -9,7 +9,7 @@ export default function Header({ connected, windowSeconds }: Props) {
       <div className="header-left">
         <h1>Pipeline Monitoring</h1>
         <span className="header-subtitle">
-          {windowSeconds ? `Rolling ${Math.round(windowSeconds)}s window` : 'UAV Fire Detection Pipeline'}
+          {windowSeconds ? `Rolling ${Math.round(windowSeconds)}s window` : 'Fire Detection Pipeline'}
         </span>
       </div>
       <div className={`status-badge ${connected ? 'connected' : 'disconnected'}`}>

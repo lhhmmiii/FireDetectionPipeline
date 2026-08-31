@@ -97,9 +97,9 @@ class FrameExtractorService:
     def _process_frame(self, frame: any) -> None:
         """Encode and publish a single frame to Kafka."""
         frame_id = str(uuid.uuid4())
-        uav_id = self._rtsp_settings.uav_id
+        source_id = self._rtsp_settings.source_id
 
-        with self._tracer.span("extract_frame", trace_id=frame_id, source_id=uav_id):
+        with self._tracer.span("extract_frame", trace_id=frame_id, source_id=source_id):
             # Resize if configured
             width = self._rtsp_settings.resize_width
             height = self._rtsp_settings.resize_height
@@ -114,7 +114,7 @@ class FrameExtractorService:
                 image_data=encode_image(frame),
                 width=w,
                 height=h,
-                source_id=uav_id,
+                source_id=source_id,
             )
 
             self._producer.produce(message, key=message.frame_id)
@@ -125,13 +125,13 @@ class FrameExtractorService:
         self._producer = self._init_producer()
         self._tracer = self._init_tracer()
 
-        uav_id = self._rtsp_settings.uav_id
+        source_id = self._rtsp_settings.source_id
         target_fps = self._rtsp_settings.extract_fps
         frame_interval = 1.0 / target_fps if target_fps > 0 else 0
 
         logger.info(
             "Frame Extractor [%s] targeting %s at %d FPS",
-            uav_id,
+            source_id,
             self._rtsp_settings.url,
             target_fps,
         )
@@ -139,7 +139,7 @@ class FrameExtractorService:
         while self._running:
             try:
                 self._capture = self._connect_rtsp()
-                logger.info("[%s] Starting frame extraction", uav_id)
+                logger.info("[%s] Starting frame extraction", source_id)
 
                 last_frame_time = 0.0
                 frames_extracted = 0
@@ -149,7 +149,7 @@ class FrameExtractorService:
                     if not ret:
                         logger.warning("Failed to read frame, reconnecting...")
                         self._tracer.record_dropped(
-                            "extract_frame", source_id=uav_id, reason="rtsp_read_failed"
+                            "extract_frame", source_id=source_id, reason="rtsp_read_failed"
                         )
                         break
 

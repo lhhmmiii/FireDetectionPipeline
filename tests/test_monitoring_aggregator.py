@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from services.monitoring.aggregator import MetricsAggregator
 
 
-def _span(stage, operation, start_time, duration_ms=10.0, status="ok", trace_id="frame-1", source_id="uav-1"):
+def _span(stage, operation, start_time, duration_ms=10.0, status="ok", trace_id="frame-1", source_id="camera-1"):
     return {
         "trace_id": trace_id,
         "span_id": f"{stage}-span",

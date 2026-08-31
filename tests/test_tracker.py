@@ -184,7 +184,7 @@ class TestSimpleIoUTracker:
 
 
 class TestMultiSourceTracking:
-    """Tests that tracker state is isolated per source_id (multi-UAV)."""
+    """Tests that tracker state is isolated per source_id (multi-source / multi-stream)."""
 
     def _make_detection(self, boxes, source_id, frame_id="f1", scores=None, classes=None):
         if scores is None:
@@ -205,25 +205,25 @@ class TestMultiSourceTracking:
         tracker = SimpleIoUTracker(min_hits=1, iou_threshold=0.3)
         box = [[10, 20, 100, 200]]
 
-        tracks_a = tracker.update(self._make_detection(box, source_id="uav-a", frame_id="a1"))
-        tracks_b = tracker.update(self._make_detection(box, source_id="uav-b", frame_id="b1"))
+        tracks_a = tracker.update(self._make_detection(box, source_id="cam-a", frame_id="a1"))
+        tracks_b = tracker.update(self._make_detection(box, source_id="cam-b", frame_id="b1"))
 
         assert len(tracks_a) == 1
         assert len(tracks_b) == 1
         # Same image-space box but different sources → distinct track IDs.
         assert tracks_a[0].track_id != tracks_b[0].track_id
-        assert tracks_a[0].source_id == "uav-a"
-        assert tracks_b[0].source_id == "uav-b"
+        assert tracks_a[0].source_id == "cam-a"
+        assert tracks_b[0].source_id == "cam-b"
 
     def test_track_ids_stable_per_source_when_interleaved(self):
         """Interleaved updates keep each source's track ID across frames."""
         tracker = SimpleIoUTracker(min_hits=1, iou_threshold=0.3)
 
-        a1 = tracker.update(self._make_detection([[10, 20, 100, 200]], "uav-a", "a1"))
-        b1 = tracker.update(self._make_detection([[500, 500, 600, 700]], "uav-b", "b1"))
+        a1 = tracker.update(self._make_detection([[10, 20, 100, 200]], "cam-a", "a1"))
+        b1 = tracker.update(self._make_detection([[500, 500, 600, 700]], "cam-b", "b1"))
         # Move each object slightly and interleave again.
-        a2 = tracker.update(self._make_detection([[15, 25, 105, 205]], "uav-a", "a2"))
-        b2 = tracker.update(self._make_detection([[505, 505, 605, 705]], "uav-b", "b2"))
+        a2 = tracker.update(self._make_detection([[15, 25, 105, 205]], "cam-a", "a2"))
+        b2 = tracker.update(self._make_detection([[505, 505, 605, 705]], "cam-b", "b2"))
 
         assert a2[0].track_id == a1[0].track_id
         assert b2[0].track_id == b1[0].track_id
@@ -233,16 +233,16 @@ class TestMultiSourceTracking:
         """One source's frames must not age out another source's tracks."""
         tracker = SimpleIoUTracker(min_hits=1, max_age=2)
 
-        # Establish a track on uav-b.
-        b1 = tracker.update(self._make_detection([[10, 20, 100, 200]], "uav-b", "b1"))
+        # Establish a track on cam-b.
+        b1 = tracker.update(self._make_detection([[10, 20, 100, 200]], "cam-b", "b1"))
         original_id = b1[0].track_id
 
-        # Hammer uav-a with more frames than max_age; uav-b must be untouched.
+        # Hammer cam-a with more frames than max_age; cam-b must be untouched.
         for i in range(5):
-            tracker.update(self._make_detection([[0, 0, 50, 50]], "uav-a", f"a{i}"))
+            tracker.update(self._make_detection([[0, 0, 50, 50]], "cam-a", f"a{i}"))
 
-        # uav-b sees the same object again → same track ID (not aged out).
-        b2 = tracker.update(self._make_detection([[10, 20, 100, 200]], "uav-b", "b2"))
+        # cam-b sees the same object again → same track ID (not aged out).
+        b2 = tracker.update(self._make_detection([[10, 20, 100, 200]], "cam-b", "b2"))
         assert b2[0].track_id == original_id
 
 

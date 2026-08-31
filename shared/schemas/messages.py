@@ -19,7 +19,7 @@ class FrameMessage:
         image_data: Base64-encoded image bytes (JPEG).
         width: Frame width in pixels.
         height: Frame height in pixels.
-        source_id: Identifier for the video source / UAV.
+        source_id: Identifier for the video source / camera stream.
     """
 
     frame_id: str
@@ -52,7 +52,7 @@ class DetectionMessage:
         boxes: List of bounding boxes, each as [x1, y1, x2, y2].
         scores: Confidence scores corresponding to each box.
         classes: Class IDs corresponding to each box.
-        source_id: Identifier for the video source / UAV.
+        source_id: Identifier for the video source / camera stream.
     """
 
     frame_id: str
@@ -77,7 +77,7 @@ class TrackMessage:
         confidence: Tracker confidence score.
         class_id: Object class ID.
         class_name: Human-readable class name.
-        source_id: Identifier for the video source / UAV.
+        source_id: Identifier for the video source / camera stream.
     """
 
     track_id: int
@@ -109,7 +109,7 @@ class SpanMessage:
         start_time: ISO-8601 timestamp of when the operation started.
         duration_ms: Wall-clock duration of the operation in milliseconds.
         status: One of "ok", "error", or "dropped".
-        source_id: Identifier for the video source / UAV.
+        source_id: Identifier for the video source / camera stream.
         error: Error message when status is "error" or "dropped".
     """
 

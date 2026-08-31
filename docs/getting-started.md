@@ -4,14 +4,14 @@
 
 - **Docker** & **Docker Compose** (v2+)
 - **Python 3.11+** (for local development)
-- A UAV or any RTSP video source (or use a test video)
+- An IP camera or any RTSP video source (or use a test video)
 
 ## Quick Start
 
 ### 1. Clone and Setup
 
 ```bash
-cd d:\Projects\FireDetectionPipeline
+cd FireDetectionPipeline
 
 # Copy environment template
 cp .env.example .env
@@ -33,12 +33,12 @@ Push an RTSP stream to the Media Gateway:
 
 ```bash
 # Using FFmpeg with a test video
-ffmpeg -re -i test_video.mp4 -c copy -f rtsp rtsp://localhost:8554/uav1
+ffmpeg -re -i test_video.mp4 -c copy -f rtsp rtsp://localhost:8554/stream1
 
-ffmpeg -re -i test_video.mp4 -c copy -f rtsp rtsp://localhost:8554/uav2
+ffmpeg -re -i test_video.mp4 -c copy -f rtsp rtsp://localhost:8554/stream2
 
 # Using FFmpeg with a webcam (Linux)
-ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -f rtsp rtsp://localhost:8554/stream
+ffmpeg -f v4l2 -i /dev/video0 -c:v libx264 -f rtsp rtsp://localhost:8554/stream1
 ```
 
 ### 4. Access the Dashboard
@@ -50,8 +50,8 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | Service | URL | Protocol |
 |---------|-----|----------|
 | Dashboard | http://localhost:8080 | HTTP |
-| MediaMTX RTSP | rtsp://localhost:8554/uav1 | RTSP |
-| MediaMTX RTSP | rtsp://localhost:8554/uav2 | RTSP |
+| MediaMTX RTSP | rtsp://localhost:8554/stream1 | RTSP |
+| MediaMTX RTSP | rtsp://localhost:8554/stream2 | RTSP |
 | MediaMTX WebRTC | http://localhost:8889 | HTTP/WebRTC |
 | MediaMTX API | http://localhost:9997 | HTTP |
 | Kafka (internal) | kafka:9092 | TCP |

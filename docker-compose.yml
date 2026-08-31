@@ -1,5 +1,5 @@
 # =============================================================================
-# UAV Fire Detection Pipeline — Docker Compose
+# Fire Detection Pipeline — Docker Compose
 # =============================================================================
 #
 # Usage:
@@ -103,23 +103,23 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Frame Extractor — UAV Instances
+  # Frame Extractor — Stream Instances
   # ---------------------------------------------------------------------------
-  frame_extractor_uav1:
+  frame_extractor_stream1:
     <<: *frame-extractor-base
-    container_name: fire-frame-extractor-uav1
+    container_name: fire-frame-extractor-stream1
     environment:
       <<: *frame-extractor-env
-      UAV_ID: uav-1
-      RTSP_URL: rtsp://mediamtx:8554/uav1
+      SOURCE_ID: camera-1
+      RTSP_URL: rtsp://mediamtx:8554/stream1
 
-  frame_extractor_uav2:
+  frame_extractor_stream2:
     <<: *frame-extractor-base
-    container_name: fire-frame-extractor-uav2
+    container_name: fire-frame-extractor-stream2
     environment:
       <<: *frame-extractor-env
-      UAV_ID: uav-2
-      RTSP_URL: rtsp://mediamtx:8554/uav2
+      SOURCE_ID: camera-2
+      RTSP_URL: rtsp://mediamtx:8554/stream2
 
   # ---------------------------------------------------------------------------
   # Detection Service
@@ -203,7 +203,7 @@ services:
       DASHBOARD_HOST: "0.0.0.0"
       DASHBOARD_PORT: 8080
       WEBRTC_URL: http://localhost:8889
-      DASHBOARD_STREAMS: "uav-1:uav1,uav-2:uav2"
+      DASHBOARD_STREAMS: "camera-1:stream1,camera-2:stream2"
       LOG_LEVEL: INFO
       LOG_FORMAT: json
     volumes:

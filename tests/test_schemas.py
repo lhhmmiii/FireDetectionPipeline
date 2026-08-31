@@ -28,12 +28,12 @@ class TestFrameMessage:
             image_data="base64data",
             width=640,
             height=480,
-            source_id="uav-1",
+            source_id="camera-1",
         )
         assert msg.frame_id == "abc-123"
         assert msg.width == 640
         assert msg.height == 480
-        assert msg.source_id == "uav-1"
+        assert msg.source_id == "camera-1"
 
     def test_frame_message_default_source_id(self):
         """Frame message should have default source_id."""
@@ -83,7 +83,7 @@ class TestFrameMessage:
             "image_data": "base64data",
             "width": 1920,
             "height": 1080,
-            "source_id": "uav-2",
+            "source_id": "camera-2",
         }
         msg = FrameMessage(**data)
         assert msg.frame_id == "xyz-789"
@@ -145,7 +145,7 @@ class TestDetectionMessage:
             boxes=[[10.0, 20.0, 100.0, 200.0]],
             scores=[0.95],
             classes=[0],
-            source_id="uav-1",
+            source_id="camera-1",
         )
         json_str = json.dumps(asdict(msg))
         parsed = json.loads(json_str)
@@ -216,7 +216,7 @@ class TestSpanMessage:
             operation="detect",
             start_time="2025-01-01T00:00:00Z",
             duration_ms=12.5,
-            source_id="uav-1",
+            source_id="camera-1",
         )
         assert msg.trace_id == "frame-1"
         assert msg.stage == "detection"
@@ -273,7 +273,7 @@ class TestSpanMessage:
             start_time="2025-01-01T00:00:00Z",
             duration_ms=5.25,
             status="error",
-            source_id="uav-1",
+            source_id="camera-1",
             error="boom",
         )
         json_str = json.dumps(asdict(msg))

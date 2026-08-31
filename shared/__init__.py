@@ -1,1 +1,1 @@
-"""Shared libraries for the UAV Fire Detection Pipeline."""
+"""Shared libraries for the Fire Detection Pipeline."""

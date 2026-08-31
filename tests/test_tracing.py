@@ -31,7 +31,7 @@ class TestTracerSpan:
         producer = FakeProducer()
         tracer = Tracer(stage="detection", producer=producer)
 
-        with tracer.span("detect", trace_id="frame-1", source_id="uav-1"):
+        with tracer.span("detect", trace_id="frame-1", source_id="camera-1"):
             pass
 
         assert len(producer.messages) == 1
@@ -41,7 +41,7 @@ class TestTracerSpan:
         assert message.stage == "detection"
         assert message.operation == "detect"
         assert message.status == "ok"
-        assert message.source_id == "uav-1"
+        assert message.source_id == "camera-1"
         assert message.duration_ms >= 0.0
 
     def test_span_measures_duration(self):
@@ -96,7 +96,7 @@ class TestTracerRecordDropped:
         tracer = Tracer(stage="frame_extractor", producer=producer)
 
         tracer.record_dropped(
-            "extract_frame", trace_id="frame-3", source_id="uav-1", reason="rtsp_read_failed"
+            "extract_frame", trace_id="frame-3", source_id="camera-1", reason="rtsp_read_failed"
         )
 
         assert len(producer.messages) == 1
@@ -110,7 +110,7 @@ class TestTracerRecordDropped:
         producer = FakeProducer()
         tracer = Tracer(stage="frame_extractor", producer=producer)
 
-        tracer.record_dropped("extract_frame", source_id="uav-1", reason="rtsp_read_failed")
+        tracer.record_dropped("extract_frame", source_id="camera-1", reason="rtsp_read_failed")
 
         message, key = producer.messages[0]
         assert message.trace_id  # non-empty generated UUID
