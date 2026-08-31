@@ -66,7 +66,7 @@ class RTSPSettings:
     """RTSP stream configuration."""
 
     source_id: str = field(
-        default_factory=lambda: _env("SOURCE_ID", _env("UAV_ID", "default"))
+        default_factory=lambda: _env("SOURCE_ID", "default")
     )
     url: str = field(
         default_factory=lambda: _env("RTSP_URL", "rtsp://localhost:8554/stream")
@@ -89,11 +89,6 @@ class RTSPSettings:
     skip_on_overload: bool = field(
         default_factory=lambda: _env_bool("FRAME_SKIP_ON_OVERLOAD", True)
     )
-
-    @property
-    def uav_id(self) -> str:
-        """Compatibility alias for source_id."""
-        return self.source_id
 
 
 @dataclass(frozen=True)
